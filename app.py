@@ -23,6 +23,7 @@ def load_and_clean_data(file_path):
     email_data['Hour'] = (email_data['Timestamp'].dt.hour + 1) % 24
     email_data['DayOfWeek'] = email_data['Timestamp'].dt.dayofweek
     email_data['Month'] = email_data['Timestamp'].dt.month
+    email_data['Date'] = email_data['Timestamp'].dt.date
 
     return email_data
 
@@ -55,6 +56,32 @@ def plot_user_daily_activity(data, user_id):
     plt.yticks(range(0, 24), [f'{hour}:00' for hour in range(24)])
 
     st.pyplot(plt)
+
+
+def median_daily_working_hours(email_data, user_id):
+    # Filter data for the specific user
+    user_data = email_data[email_data['Unique ID'] == user_id]
+
+    # Exclude weekends
+    user_data = user_data[user_data['DayOfWeek'] < 5]
+
+    # Calculate the first and last email times per day for the specific user
+    grouped = user_data.groupby(['Unique ID', 'Date'])[
+        'Timestamp'].agg(['min', 'max']).reset_index()
+
+    # Extract only the time part from 'min' and 'max'
+    grouped['min_time'] = grouped['min'].dt.time
+    grouped['max_time'] = grouped['max'].dt.time
+
+    grouped['total_time'] = (
+        grouped['max'] - grouped['min']).dt.total_seconds().round().astype(int)
+
+    # Calculate the median of these times in seconds
+    median_working_hour = grouped['total_time'].median() / 3600
+
+    print(median_working_hour)
+
+    return median_working_hour
 
 # Streamlit interface
 
@@ -91,10 +118,17 @@ def main():
                                    == user_id_formatted]
             user_department = user_data['Department'].iloc[0]
             total_emails = user_data.shape[0]
-            col1, col2 = st.columns(2)
+            median_working_hours = median_daily_working_hours(
+                email_data, user_id_formatted)
+
+            hours = int(median_working_hours)
+            minutes = int((median_working_hours - hours) * 60)
+            median_working_hours_minutes = f"{hours:02}:{minutes:02}"
+
+            col1, col2, col3 = st.columns(3)
             col1.metric("Department", user_department)
             col2.metric("Total Emails Sent (1 month)", total_emails)
-
+            col3.metric("Median Working Hours", median_working_hours_minutes)
             # st.write(f"Department: {user_department}")
             # st.write(f"Total Emails Sent (1 month): {total_emails}")
 
