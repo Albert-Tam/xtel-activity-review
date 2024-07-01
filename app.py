@@ -128,7 +128,8 @@ def main():
             col1, col2, col3 = st.columns(3)
             col1.metric("Department", user_department)
             col2.metric("Total Emails Sent (1 month)", total_emails)
-            col3.metric("Median Working Hours", median_working_hours_minutes)
+            col3.metric("Median Working Hours", median_working_hours_minutes,
+                        help="Calculated by taking the median of the time between the first and last email sent each day (excluding weekends). A value of 0 indicates only one email was sent each day.")
             # st.write(f"Department: {user_department}")
             # st.write(f"Total Emails Sent (1 month): {total_emails}")
 
