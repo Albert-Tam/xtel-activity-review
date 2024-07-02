@@ -20,10 +20,15 @@ def load_and_clean_data(file_path):
     email_data = email_data.dropna(subset=['Timestamp'])
 
     # Extract hour, day of the week, and month from the Timestamp
+    email_data['Date'] = email_data['Timestamp'].dt.date
     email_data['Hour'] = (email_data['Timestamp'].dt.hour + 1) % 24
+    email_data['Minute'] = email_data['Timestamp'].dt.minute
+    time_in_hours = email_data['Hour'] + email_data['Minute']/60
+    adjusted_for_cet = (time_in_hours + 1) % 24
+    email_data['TimeInHours'] = adjusted_for_cet
     email_data['DayOfWeek'] = email_data['Timestamp'].dt.dayofweek
     email_data['Month'] = email_data['Timestamp'].dt.month
-    email_data['Date'] = email_data['Timestamp'].dt.date
+    email_data['Week'] = email_data['Timestamp'].dt.isocalendar().week
 
     return email_data
 
@@ -32,18 +37,17 @@ def load_and_clean_data(file_path):
 
 def plot_user_daily_activity(data, user_id):
     user_data = data[data['Unique ID'] == user_id]
-
     # Extract day of the week and time from the Timestamp
-    user_data['DayOfWeek'] = user_data['Timestamp'].dt.dayofweek
-    user_data['Time'] = user_data['Timestamp'].dt.time
+    # user_data['DayOfWeek'] = user_data['Timestamp'].dt.dayofweek
+    # user_data['Time'] = user_data['Timestamp'].dt.time
 
     plt.figure(figsize=(14, 7))
 
     # Scatter plot of email timestamps
-    plt.scatter(user_data['DayOfWeek'], user_data['Timestamp'].dt.hour +
-                user_data['Timestamp'].dt.minute/60, alpha=0.7, marker='x')
+    plt.scatter(user_data['DayOfWeek'],
+                user_data["TimeInHours"], alpha=0.7, marker='x')
 
-    plt.title(f'Monthly Email Activity for User {user_id}')
+    plt.title(f'Email Activity for User {user_id}')
     plt.xlabel('Day of the Week')
     plt.ylabel('Time of Day')
     plt.grid(True)
@@ -79,8 +83,6 @@ def median_daily_working_hours(email_data, user_id):
     # Calculate the median of these times in seconds
     median_working_hour = grouped['total_time'].median() / 3600
 
-    print(median_working_hour)
-
     return median_working_hour
 
 # Streamlit interface
@@ -102,6 +104,8 @@ def main():
 
         st.write(
             f"Data Timeframe: {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}")
+
+        st.write("Timezone: CET (Central European Time)")
 
         # Get unique user IDs
         unique_ids = len(email_data['Unique ID'].unique())
@@ -133,7 +137,18 @@ def main():
             # st.write(f"Department: {user_department}")
             # st.write(f"Total Emails Sent (1 month): {total_emails}")
 
+            st.subheader(f"Aggregated Activity for User {user_id_formatted}")
             plot_user_daily_activity(email_data, user_id_formatted)
+            st.divider()
+
+            # Get unique weeks
+            unique_weeks = sorted(user_data['Week'].unique())
+
+            # Plot user daily activity for each unique week
+            for week in unique_weeks:
+                st.subheader(f"Week {week}")
+                week_data = email_data[email_data['Week'] == week]
+                plot_user_daily_activity(week_data, user_id_formatted)
 
 
 if __name__ == "__main__":
