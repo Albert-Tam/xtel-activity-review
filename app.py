@@ -120,35 +120,40 @@ def main():
         if user_id_formatted:
             user_data = email_data[email_data['Unique ID']
                                    == user_id_formatted]
-            user_department = user_data['Department'].iloc[0]
-            total_emails = user_data.shape[0]
-            median_working_hours = median_daily_working_hours(
-                email_data, user_id_formatted)
 
-            hours = int(median_working_hours)
-            minutes = int((median_working_hours - hours) * 60)
-            median_working_hours_minutes = f"{hours:02}:{minutes:02}"
+            if user_data.empty:
+                st.warning("Data is not available for this user.", icon="⚠️")
+            else:
+                user_department = user_data['Department'].iloc[0]
+                total_emails = user_data.shape[0]
+                median_working_hours = median_daily_working_hours(
+                    email_data, user_id_formatted)
 
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Department", user_department)
-            col2.metric("Total Emails Sent (1 month)", total_emails)
-            col3.metric("Median Working Hours", median_working_hours_minutes,
-                        help="Calculated by taking the median of the time between the first and last email sent each day (excluding weekends). A value of 0 indicates only one email was sent each day.")
-            # st.write(f"Department: {user_department}")
-            # st.write(f"Total Emails Sent (1 month): {total_emails}")
+                hours = int(median_working_hours)
+                minutes = int((median_working_hours - hours) * 60)
+                median_working_hours_minutes = f"{hours:02}:{minutes:02}"
 
-            st.subheader(f"Aggregated Activity for User {user_id_formatted}")
-            plot_user_daily_activity(email_data, user_id_formatted)
-            st.divider()
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Department", user_department)
+                col2.metric("Total Emails Sent (1 month)", total_emails)
+                col3.metric("Median Working Hours", median_working_hours_minutes,
+                            help="Calculated by taking the median of the time between the first and last email sent each day (excluding weekends). A value of 0 indicates only one email was sent each day.")
+                # st.write(f"Department: {user_department}")
+                # st.write(f"Total Emails Sent (1 month): {total_emails}")
 
-            # Get unique weeks
-            unique_weeks = sorted(user_data['Week'].unique())
+                st.subheader(
+                    f"Aggregated Activity for User {user_id_formatted}")
+                plot_user_daily_activity(email_data, user_id_formatted)
+                st.divider()
 
-            # Plot user daily activity for each unique week
-            for week in unique_weeks:
-                st.subheader(f"Week {week}")
-                week_data = email_data[email_data['Week'] == week]
-                plot_user_daily_activity(week_data, user_id_formatted)
+                # Get unique weeks
+                unique_weeks = sorted(user_data['Week'].unique())
+
+                # Plot user daily activity for each unique week
+                for week in unique_weeks:
+                    st.subheader(f"Week {week}")
+                    week_data = email_data[email_data['Week'] == week]
+                    plot_user_daily_activity(week_data, user_id_formatted)
 
 
 if __name__ == "__main__":
