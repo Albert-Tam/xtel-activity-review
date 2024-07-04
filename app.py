@@ -37,9 +37,6 @@ def load_and_clean_data(file_path):
 
 def plot_user_daily_activity(data, user_id):
     user_data = data[data['Unique ID'] == user_id]
-    # Extract day of the week and time from the Timestamp
-    # user_data['DayOfWeek'] = user_data['Timestamp'].dt.dayofweek
-    # user_data['Time'] = user_data['Timestamp'].dt.time
 
     plt.figure(figsize=(14, 7))
 
@@ -91,6 +88,9 @@ def median_daily_working_hours(email_data, user_id):
 def main():
     st.title("Email Activity Analysis")
 
+    # List to store flagged users
+    flagged_users = st.session_state.get('flagged_users', [])
+
     # File uploader
     file_path = st.file_uploader("Upload CSV file", type=["csv"])
 
@@ -138,8 +138,36 @@ def main():
                 col2.metric("Total Emails Sent (1 month)", total_emails)
                 col3.metric("Median Working Hours", median_working_hours_minutes,
                             help="Calculated by taking the median of the time between the first and last email sent each day (excluding weekends). A value of 0 indicates only one email was sent each day.")
-                # st.write(f"Department: {user_department}")
-                # st.write(f"Total Emails Sent (1 month): {total_emails}")
+
+                # Button to flag or unflag user
+                if user_id_formatted in [user['UserID'] for user in flagged_users]:
+                    if st.button(f"Remove Flag for User {user_id_formatted}"):
+                        flagged_users = [
+                            user for user in flagged_users if user['UserID'] != user_id_formatted]
+                        st.session_state['flagged_users'] = flagged_users
+                        st.success(
+                            f"Flag removed for User {user_id_formatted}.")
+                else:
+                    if st.button(f"🚩 Flag User {user_id_formatted}"):
+                        flagged_users.append({
+                            "UserID": user_id_formatted,
+                            "Department": user_department
+                        })
+                        st.session_state['flagged_users'] = flagged_users
+                        st.success(f"User {user_id_formatted} flagged.")
+
+                # Download flagged users
+                if flagged_users:
+                    flagged_users_df = pd.DataFrame(flagged_users)
+                    csv = flagged_users_df.to_csv(index=False)
+                    st.download_button(
+                        label=f"Download {flagged_users_df.shape[0]} Flagged Users as CSV",
+                        data=csv,
+                        file_name='flagged_users.csv',
+                        mime='text/csv'
+                    )
+                else:
+                    st.write("No users flagged yet.")
 
                 st.subheader(
                     f"Aggregated Activity for User {user_id_formatted}")
